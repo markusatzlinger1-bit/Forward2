@@ -1,44 +1,19 @@
-# Forward — iOS-Safari-App / PWA
+# Forward 1.2 – iPhone (PWA)
 
-Diese **mobile Web-App** bietet den Forward-Workflow ohne Xcode und ohne App-Store-Account. Sie ist für Safari auf dem iPhone optimiert und lässt sich als App-Symbol zum Home-Bildschirm hinzufügen, sobald sie über eine HTTPS-Adresse bereitsteht.
+## Änderungen
+- Kapitel unter **••• → Zurück zu Draft** wieder in den Entwurfsmodus setzen. Bereits gesperrte Absätze bleiben gesperrt. Bei zwischenzeitlich geänderter Revision wird deren Text intern in `revisionHistory` gesichert (über die JSON-Bibliothekssicherung zugänglich).
+- **—** in der Formatierungsleiste fügt einen Em-Dash im aktuellen Absatz ein.
+- **---** erzeugt einen Szenentrenner als eigenen, sofort gesperrten Absatz. Funktioniert nur bei leerem aktuellen Absatz.
+- Nach Löschen eines Kapitels wird die aktuelle Romanwortzahl und der Fortschritt neu aus den verbliebenen Kapiteln berechnet. Historische Tagesstatistiken bleiben als Schreibaktivität erhalten.
+- Service-Worker-Cache auf Version 1.2 aktualisiert.
 
-## Auf dem iPhone benutzen
+## Update über GitHub Pages
+1. **Unbedingt zuerst** in der bisherigen App eine JSON-Bibliothekssicherung erstellen und in der Dateien-App aufbewahren.
+2. Alle Dateien aus diesem Ordner in das von GitHub Pages veröffentlichte Verzeichnis kopieren (dort muss `index.html` liegen).
+3. GitHub Pages Deployment abwarten und die App erneut öffnen. Gegebenenfalls Safari neu laden.
+4. Die bestehende Bibliothek bleibt normalerweise erhalten, wenn die **exakt gleiche Adresse** und der gleiche Safari-/Home-Bildschirm-Kontext verwendet werden. Browserdaten niemals ohne Backup löschen.
 
-1. Den **gesamten Inhalt dieses Ordners** bei einem statischen Webhost unter HTTPS bereitstellen, etwa über GitHub Pages. Wichtig: `index.html`, `app.js`, `sw.js`, `manifest.json`, beide WAV-Dateien und beide PNG-Icons müssen **im gleichen Webverzeichnis** erreichbar sein.
-2. Die HTTPS-Adresse in **Safari auf dem iPhone** öffnen.
-3. Im Teilen-Menü **Zum Home-Bildschirm** (bzw. „Zum Home-Bildschirm hinzufügen“) auswählen und den Eintrag **Forward** öffnen.
-4. Die App beim ersten Mal online laden, damit der Service Worker die Dateien für den Offlinebetrieb zwischenspeichern kann. Danach arbeitet sie auch ohne Internet.
+## Hinweis
+Die Wortziel-Anzeige zählt aktuelle Wörter der vorhandenen Kapitel, nicht die historisch geschriebenen Wörter. Tagesstatistiken bleiben bewusst unverändert, wenn ein Kapitel gelöscht wird. Die gespeicherte Revisionsfassung wird beim Zurücksetzen auf Draft nicht automatisch in die gesperrten Absätze übernommen.
 
-**Nicht einfach `index.html` über die Dateien-App öffnen:** In dieser Betriebsart sind die notwendigen Browser-Speicher- und Offlinefunktionen nicht zuverlässig verfügbar. Für die PWA ist eine reguläre HTTPS-Adresse vorgesehen.
-
-## Funktionen
-
-- Absatzsperre **Variante B**. Alte Absätze sind nie in einem editierbaren Textelement, nur der aktuelle Absatz ist änderbar. `Return` verriegelt den bisherigen Text.
-- Zwei kurze Sounds (`Plop`, `Thud`), abschaltbar. **Kein Haptik-Feedback** in dieser Safari-Version; das ist eine Funktion der nativen iOS-App.
-- Kapitel anlegen, umbenennen, löschen; Revisionsmarker hinzufügen und entfernen.
-- Originalfassung beim Abschließen sichern und getrennte Fassung überarbeiten.
-- Autosave in **IndexedDB** des Browsers (ohne Server, ohne Konto) und Offline-Verfügbarkeit via Service Worker.
-- Wortzahlen, Tages-/Wochenstatistik, Schreibserie, Fokusmodus.
-- TXT, Markdown, DOCX exportieren. Die DOCX-Datei ist ein gültiges Word-/OpenXML-Dokument.
-- **JSON-Backup** der ganzen Bibliothek in „Optionen“ erstellen und über „Backup einlesen“ wiederherstellen.
-
-## Datensicherheit
-
-**Wichtig:** Die Kapitel werden **lokal in dem Safari-/Web-App-Speicher des jeweiligen Geräts** gespeichert, nicht beim Webhost. Löschen von Safari-Websitedaten, eine Neuinstallation, bestimmte Browser- oder iOS-Speicherbereinigungen oder ein Gerätewechsel können diese lokalen Daten entfernen. Lege deshalb regelmäßig mit **Optionen → Bibliothek sichern** eine JSON-Sicherung in der iOS-Dateien-App ab. Der Browser ist keine einzige verlässliche Langzeitkopie für einen Roman.
-
-Die App besitzt keine Benutzeranmeldung und sendet Kapiteltext nicht an einen Server. Die Webseiten-Dateien selbst werden beim ersten Laden vom gewählten Webhost abgerufen.
-
-## Tests
-
-Die mobile Oberfläche wurde in einem Chromium-Mobilviewport durchgeklickt: Kapitel erstellen, Absatzabschlüsse, Marker, Originalarchiv, Revision, DOCX-Export und Statistik. Die exportierte DOCX wurde danach mit einem separaten Word-Dokumentleser geöffnet und auf den Inhalt geprüft. Ein echter iOS-Safari-Test war in dieser Umgebung nicht möglich; besonders Tonwiedergabe und Homescreen-Installation sollten am Gerät geprüft werden.
-
-**Hinweis:** Diese Web-App und das separate SwiftUI-Xcode-Projekt verwenden unterschiedliche Speicherschemata. Es gibt keine automatische Synchronisierung zwischen ihnen.
-
-## Neu in Version 1.1
-
-- **Fett, kursiv und unterstrichen** im aktuell offenen Absatz über B / I / U. Nach Return wird die sichtbare Formatierung zusammen mit dem Absatz gesperrt.
-- **Schriftwahl:** Serife (Georgia), Sans Serif oder Monospace in Optionen.
-- **Romanwortziel:** Standard 360.000 Wörter, frei anpassbar. Gesamtfortschritt in Prozent und Beitrag jedes Kapitels in der Kapitelübersicht.
-- **Schließen** im Kapiteloptionsdialog.
-
-**Wichtige Einschränkungen:** Der Editor zeigt Formatierungen im Entwurf an und speichert sie in der JSON-Bibliothek. Die bisherige Revision und die TXT/Markdown/DOCX-Exporte verwenden weiterhin den reinen Text und übernehmen die Formatierung noch nicht. Vor einem längeren Projekt sollten Formatierung und iOS-Safari-Textauswahl auf dem eigenen Gerät getestet werden. Bitte vor dem Update über Optionen → Bibliothek sichern ein JSON-Backup anlegen. Beim GitHub-Pages-Update alle Dateien ersetzen und die Seite neu laden; bei älteren iOS-Installationen kann ein Neustart der Home-Bildschirm-App nötig sein.
+Diese Web-App wurde auf JavaScript-Syntax geprüft, aber nicht auf einem echten iPhone getestet.
