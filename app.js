@@ -53,6 +53,7 @@ function plainOf(html){const el=document.createElement('div');el.innerHTML=html;
 function safeParaHTML(c,i){return c.lockedHtml?.[i] ? cleanHTML(c.lockedHtml[i]) : esc(c.locked[i])}
 function commitParagraph(){const c=current(),input=$('#activePara');if(!c||!input||readOnly)return;const before=draft(c),raw=input.innerHTML,html=cleanHTML(raw),text=plainOf(html);c.lockedHtml??=[];c.lockedHtml.push(html);c.locked.push(text);c.active='';c.activeHtml='';recordWords(before,draft(c));touch(c);save(true);renderEditor({focusEditor:true});if(text.trim())play();}
 function syncActive(){const c=current(),input=$('#activePara');if(!c||!input)return;const before=draft(c);c.activeHtml=cleanHTML(input.innerHTML);c.active=input.textContent||'';recordWords(before,draft(c));touch(c);updateStatus('Speichert …');save()}
+function insertSymbol(symbol){const input=$('#activePara');if(!input||readOnly)return;input.focus();document.execCommand('insertText',false,symbol);syncActive()}
 function formatActive(cmd){const input=$('#activePara');if(!input)return;input.focus();document.execCommand(cmd,false,null);syncActive()}
 
 function recordWords(before,after){const delta=Math.max(0,countWords(after)-countWords(before));if(delta)library.dailyAdds[today()]=(library.dailyAdds[today()]||0)+delta}
@@ -99,7 +100,7 @@ function renderEditor({focusEditor=false,cursor=null}={}){
     input.addEventListener('paste',e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData('text/plain').replace(/[\r\n]+/g,' ');document.execCommand('insertText',false,text);syncActive()});
     input.addEventListener('input',()=>syncActive());
     input.addEventListener('blur',()=>{if(saveTimer){save(true)}});
-    $('#editor-actions').innerHTML=`<button class="button" data-act="bold" aria-label="Fett"><b>B</b></button><button class="button" data-act="italic" aria-label="Kursiv"><i>I</i></button><button class="button" data-act="underline" aria-label="Unterstreichen"><u>U</u></button><button class="button" data-act="marker" ${readOnly?'disabled':''}>♧ Marker</button><button class="iconbtn muted" data-act="markers">${c.markers.length?'('+c.markers.length+')':'Liste'}</button><span class="push"></span><button class="button primary" data-act="finish" ${readOnly?'disabled':''}>✓ Abschließen</button>`;
+    $('#editor-actions').innerHTML=`<button class="button" data-act="bold" aria-label="Fett"><b>B</b></button><button class="button" data-act="italic" aria-label="Kursiv"><i>I</i></button><button class="button" data-act="underline" aria-label="Unterstreichen"><u>U</u></button><button class="button" data-act="emdash" aria-label="Gedankenstrich einfügen">—</button><button class="button" data-act="separator" aria-label="Szenentrenner einfügen">---</button><button class="button" data-act="marker" ${readOnly?'disabled':''}>♧ Marker</button><button class="iconbtn muted" data-act="markers">${c.markers.length?'('+c.markers.length+')':'Liste'}</button><span class="push"></span><button class="button primary" data-act="finish" ${readOnly?'disabled':''}>✓ Abschließen</button>`;
     if(focusEditor){input.focus();input.scrollIntoView({block:'nearest'})}
   }else{
     $('#paper').innerHTML='<div class="eyebrow" style="margin-bottom:26px">Freie Überarbeitung · Original bleibt erhalten</div><textarea id="revision" aria-label="Bearbeitbare Revision" spellcheck="true"></textarea>';
@@ -193,8 +194,19 @@ function showMarkers(){const c=current();if(!c)return;
   showDialog('Revisionsmarker',content,[{label:'Schließen',run:closeDialog}]);
 }
 function showOriginal(){const c=current();if(!c)return;showDialog('Originalentwurf',`<div class="eyebrow">Unveränderbares Archiv</div><pre>${esc(c.original??draft(c))}</pre>`,[{label:'Schließen',run:closeDialog},{label:'Export',primary:true,run:()=>{closeDialog();promptExport(true)}}])}
+function promptReturnToDraft(){
+  const c=current();if(!c||c.phase!=='revising'||readOnly)return;
+  const changed=(c.revision??'')!==(c.original??draft(c));
+  showDialog('Zurück zum Entwurf?',`<p>Das Kapitel wird wieder in den Draft-Modus versetzt. Bereits gesperrte Absätze bleiben gesperrt; nur der letzte Absatz ist bearbeitbar.</p>${changed?'<p style="color:var(--danger)"><strong>Achtung:</strong> Du hast die Revisionsfassung verändert. Diese Änderungen werden als separate Sicherung in diesem Kapitel aufbewahrt, aber nicht in den gesperrten Draft übernommen.</p>':'<p class="notice">Der ursprüngliche Entwurf bleibt unverändert erhalten.</p>'}`,[
+    {label:'Abbrechen',run:closeDialog},
+    {label:'Zurück zu Draft',primary:true,run:()=>{
+      if(changed){c.revisionHistory??=[];c.revisionHistory.push({saved:new Date().toISOString(),text:c.revision})}
+      c.phase='drafting';c.completed=null;touch(c);save(true);closeDialog();renderEditor();toast('Draft-Modus wiederhergestellt')
+    }}
+  ]);
+}
 function promptFinish(){const c=current();if(!c||c.phase!=='drafting')return;
-  showDialog('Ersten Entwurf abschließen?',`<p>Dieser Schritt ist endgültig. Der vollständige Originaltext wird archiviert, und du kannst eine separate Revisionsfassung frei bearbeiten.</p><p class="notice">${fmt(countWords(draft(c)))} Wörter · ${c.locked.length+1} Absätze</p>`,[
+  showDialog('Ersten Entwurf abschließen?',`<p>Der Originaltext wird archiviert und eine separate Revisionsfassung geöffnet. Du kannst das Kapitel über die Optionen wieder in den Draft-Modus versetzen.</p><p class="notice">${fmt(countWords(draft(c)))} Wörter · ${c.locked.length+1} Absätze</p>`,[
     {label:'Weiter schreiben',run:closeDialog},
     {label:'Abschließen',primary:true,run:()=>{c.original=draft(c);c.revision=c.original;c.phase='revising';c.completed=new Date().toISOString();touch(c);save(true);closeDialog();renderEditor()}}
   ]);
@@ -204,7 +216,7 @@ function promptMenu(){const c=current();if(!c)return;
     {label:'Schließen',run:closeDialog},
     {label:'Umbenennen',run:()=>{closeDialog();showDialog('Kapitel umbenennen',`<label>Titel</label><input type="text" id="rename" value="${esc(c.title)}" maxlength="180">`,[{label:'Abbrechen',run:closeDialog},{label:'Speichern',primary:true,run:()=>{const name=$('#rename').value.trim();if(name){c.title=name;touch(c);save(true);closeDialog();renderEditor()}}}]);$('#rename').focus()}},
     {label:'Exportieren',run:()=>{closeDialog();promptExport(false)}},
-    ...(c.phase==='revising'?[{label:'Original lesen',run:()=>{closeDialog();showOriginal()}}]:[]),
+    ...(c.phase==='revising'?[{label:'Zurück zu Draft',run:()=>{closeDialog();promptReturnToDraft()}},{label:'Original lesen',run:()=>{closeDialog();showOriginal()}}]:[]),
     {label:'Löschen',danger:true,run:()=>{closeDialog();promptDelete()}}
   ]);
 }
@@ -269,6 +281,8 @@ document.addEventListener('click',e=>{
     case'bold':formatActive('bold');break;
     case'italic':formatActive('italic');break;
     case'underline':formatActive('underline');break;
+    case'emdash':insertSymbol('—');break;
+    case'separator':{const c=current();if(!c||c.phase!=='drafting'||readOnly)break;const input=$('#activePara');if(input.textContent.trim()){toast('Szenentrenner nur in einem leeren Absatz einfügen');break}input.innerHTML='---';syncActive();commitParagraph();break}
     case'focus':focus=!focus;app.classList.toggle('focus',focus);renderEditor();break;
     case'marker':promptMarker();break;
     case'markers':showMarkers();break;
