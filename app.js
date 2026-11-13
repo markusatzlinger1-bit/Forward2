@@ -4,7 +4,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const countWords=s=>(String(s).trim().match(/\S+/gu)||[]).length;
 const localKey=d=>{const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`};
-const blankLibrary=()=>({chapters:[],settings:{sound:'plop',haptics:true},dailyAdds:{}});
+const blankLibrary=()=>({chapters:[],settings:{sound:'plop',haptics:true,font:'serif',wordGoal:360000},dailyAdds:{}});
 const fmt=n=>new Intl.NumberFormat('de-DE').format(n);
 const today=()=>localKey(new Date());
 const uid=()=>typeof crypto.randomUUID==='function'?crypto.randomUUID():String(Date.now())+'-'+Math.random().toString(16).slice(2);
@@ -45,12 +45,22 @@ function loadDatabase(){return new Promise((resolve,reject)=>{
 })}
 function current(){return library.chapters.find(c=>c.id===activeID)||null}
 function draft(c){return [...c.locked,c.active].join('\n')}
+function wordTotal(){return library.chapters.reduce((n,c)=>n+countWords(c.phase==='drafting'?draft(c):c.revision||''),0)}
+function goal(){return Math.max(1,Number(library.settings.wordGoal)||360000)}
+function progressBar(n,target){const pct=n/target*100;return `<div class="goal-track" role="progressbar" aria-valuenow="${Math.min(100,Math.round(pct))}" aria-valuemin="0" aria-valuemax="100"><div style="width:${Math.min(100,pct)}%"></div></div>`}
+function cleanHTML(html){const box=document.createElement('div');box.innerHTML=html;const walk=node=>{for(const child of [...node.childNodes]){if(child.nodeType===3)continue;if(child.nodeType!==1){child.remove();continue}const tag=child.tagName.toLowerCase();if(['b','strong','i','em','u','br'].includes(tag)){for(const attr of [...child.attributes])child.removeAttribute(attr.name);walk(child)}else{walk(child);child.replaceWith(...child.childNodes)}}};walk(box);return box.innerHTML}
+function plainOf(html){const el=document.createElement('div');el.innerHTML=html;return el.textContent||''}
+function safeParaHTML(c,i){return c.lockedHtml?.[i] ? cleanHTML(c.lockedHtml[i]) : esc(c.locked[i])}
+function commitParagraph(){const c=current(),input=$('#activePara');if(!c||!input||readOnly)return;const before=draft(c),raw=input.innerHTML,html=cleanHTML(raw),text=plainOf(html);c.lockedHtml??=[];c.lockedHtml.push(html);c.locked.push(text);c.active='';c.activeHtml='';recordWords(before,draft(c));touch(c);save(true);renderEditor({focusEditor:true});if(text.trim())play();}
+function syncActive(){const c=current(),input=$('#activePara');if(!c||!input)return;const before=draft(c);c.activeHtml=cleanHTML(input.innerHTML);c.active=input.textContent||'';recordWords(before,draft(c));touch(c);updateStatus('Speichert …');save()}
+function formatActive(cmd){const input=$('#activePara');if(!input)return;input.focus();document.execCommand(cmd,false,null);syncActive()}
+
 function recordWords(before,after){const delta=Math.max(0,countWords(after)-countWords(before));if(delta)library.dailyAdds[today()]=(library.dailyAdds[today()]||0)+delta}
 function touch(c){c.updated=new Date().toISOString()}
 
 async function start(){
   try{await loadDatabase()}catch(e){readOnly=true;toast('Speicher nicht verfügbar – Schreiben deaktiviert',7000)}
-  render();
+  applyFont();render();
   if('serviceWorker' in navigator && window.isSecureContext){navigator.serviceWorker.register('./sw.js').catch(()=>{})}
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&saveTimer){clearTimeout(saveTimer);save(true)}});
   window.addEventListener('pagehide',()=>{if(saveTimer){clearTimeout(saveTimer);save(true)}});
@@ -71,7 +81,7 @@ function render(){
 function renderList(){
   const chapters=[...library.chapters].sort((a,b)=>new Date(b.updated)-new Date(a.updated));
   main.innerHTML=`<div class="intro"><div class="eyebrow">Write first. Edit later.</div><h1>Ein Absatz.<br>Ein Schritt vorwärts.</h1><p>Schreib weiter, ohne zurückzuspringen. Jeder neue Absatz sichert den vorherigen.</p></div>
-  ${chapters.length?`<section class="cards">${chapters.map(c=>`<button class="surface chapter" data-open="${esc(c.id)}"><div class="row"><i class="dot ${c.phase==='drafting'?'':'grey'}"></i><span class="eyebrow">${c.phase==='drafting'?'Entwurf':'Revision'}</span><span class="push"></span><span class="small muted">${new Date(c.updated).toLocaleDateString('de-DE',{day:'numeric',month:'short'})}</span></div><h2>${esc(c.title)}</h2><div class="row small muted"><span>${fmt(countWords(c.phase==='drafting'?draft(c):c.revision))} Wörter · ${c.locked.length} gesperrt</span><span class="push"></span><span>↗</span></div></button>`).join('')}</section>`:
+  <section class="surface" style="margin-bottom:20px"><div class="row"><span class="eyebrow">Romanfortschritt</span><span class="push"></span><strong>${(wordTotal()/goal()*100).toFixed(2)} %</strong></div>${progressBar(wordTotal(),goal())}<div class="row small muted"><span>${fmt(wordTotal())} / ${fmt(goal())} Wörter</span><span class="push"></span><span>${fmt(Math.max(0,goal()-wordTotal()))} verbleibend</span></div></section>${chapters.length?`<section class="cards">${chapters.map(c=>`<button class="surface chapter" data-open="${esc(c.id)}"><div class="row"><i class="dot ${c.phase==='drafting'?'':'grey'}"></i><span class="eyebrow">${c.phase==='drafting'?'Entwurf':'Revision'}</span><span class="push"></span><span class="small muted">${new Date(c.updated).toLocaleDateString('de-DE',{day:'numeric',month:'short'})}</span></div><h2>${esc(c.title)}</h2><div class="row small muted"><span>${fmt(countWords(c.phase==='drafting'?draft(c):c.revision))} Wörter · ${(countWords(c.phase==='drafting'?draft(c):c.revision)/goal()*100).toFixed(2)} % vom Ziel</span><span class="push"></span><span>↗</span></div></button>`).join('')}</section>`:
   `<div class="surface"><div style="font-size:30px;color:var(--accent)">▰</div><h2 style="margin:16px 0 8px">Deine erste Seite wartet.</h2><p>Lege ein Kapitel an. Der aktuelle Absatz bleibt bearbeitbar, alle früheren werden nach Return gesperrt.</p><button class="button primary full" data-act="create">Kapitel erstellen</button></div>`}
   <p class="small" style="text-align:center;margin-top:30px">Lokal gespeichert · Keine Anmeldung erforderlich</p>`;
 }
@@ -81,13 +91,16 @@ function renderEditor({focusEditor=false,cursor=null}={}){
   topbar.innerHTML=`<button class="iconbtn" data-go="list" aria-label="Zurück zu Kapiteln">←</button><strong>${esc(focus?'Fokus':c.title)}</strong><span class="push"></span><button class="iconbtn" data-act="focus" aria-label="Fokusmodus">${focus?'Fokus aus':'⤢'}</button>${focus?'':`<button class="iconbtn" data-act="editor-menu" aria-label="Kapitelmenü">•••</button>`}`;
   updateStatus('Gespeichert');
   if(c.phase==='drafting'){
-    $('#paper').innerHTML=`<div class="eyebrow" style="margin-bottom:27px">🔒 Absatz ${String(c.locked.length+1).padStart(2,'0')}</div>${c.locked.map(p=>`<p class="locked" aria-label="Gesperrter Absatz">${p?esc(p):'&nbsp;'}</p>`).join('')}
-      <textarea id="activePara" placeholder="Schreib den nächsten Absatz …" aria-label="Bearbeitbarer aktueller Absatz" spellcheck="true" ${readOnly?'disabled':''}></textarea>`;
-    const input=$('#activePara');input.value=c.active;grow(input);
-    input.addEventListener('input',()=>onDraftInput(input));
+    $('#paper').innerHTML=`<div class="eyebrow" style="margin-bottom:27px">🔒 Absatz ${String(c.locked.length+1).padStart(2,'0')}</div>${c.locked.map((p,i)=>`<p class="locked" aria-label="Gesperrter Absatz">${p?safeParaHTML(c,i):'&nbsp;'}</p>`).join('')}
+      <div id="activePara" contenteditable="${readOnly?'false':'true'}" role="textbox" aria-multiline="false" data-placeholder="Schreib den nächsten Absatz …" aria-label="Bearbeitbarer aktueller Absatz" spellcheck="true"></div>`;
+    const input=$('#activePara');input.innerHTML=cleanHTML(c.activeHtml??esc(c.active));
+    input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();if(!e.isComposing)commitParagraph()}});
+    input.addEventListener('beforeinput',e=>{if(e.inputType==='insertParagraph'||e.inputType==='insertLineBreak'){e.preventDefault();commitParagraph()}});
+    input.addEventListener('paste',e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData('text/plain').replace(/[\r\n]+/g,' ');document.execCommand('insertText',false,text);syncActive()});
+    input.addEventListener('input',()=>syncActive());
     input.addEventListener('blur',()=>{if(saveTimer){save(true)}});
-    $('#editor-actions').innerHTML=`<button class="button" data-act="marker" ${readOnly?'disabled':''}>♧ Marker</button><button class="iconbtn muted" data-act="markers">${c.markers.length?'('+c.markers.length+')':'Liste'}</button><span class="push"></span><button class="button primary" data-act="finish" ${readOnly?'disabled':''}>✓ Abschließen</button>`;
-    if(focusEditor){input.focus();if(cursor!==null)input.setSelectionRange(cursor,cursor);input.scrollIntoView({block:'nearest'})}
+    $('#editor-actions').innerHTML=`<button class="button" data-act="bold" aria-label="Fett"><b>B</b></button><button class="button" data-act="italic" aria-label="Kursiv"><i>I</i></button><button class="button" data-act="underline" aria-label="Unterstreichen"><u>U</u></button><button class="button" data-act="marker" ${readOnly?'disabled':''}>♧ Marker</button><button class="iconbtn muted" data-act="markers">${c.markers.length?'('+c.markers.length+')':'Liste'}</button><span class="push"></span><button class="button primary" data-act="finish" ${readOnly?'disabled':''}>✓ Abschließen</button>`;
+    if(focusEditor){input.focus();input.scrollIntoView({block:'nearest'})}
   }else{
     $('#paper').innerHTML='<div class="eyebrow" style="margin-bottom:26px">Freie Überarbeitung · Original bleibt erhalten</div><textarea id="revision" aria-label="Bearbeitbare Revision" spellcheck="true"></textarea>';
     const input=$('#revision');input.value=c.revision;input.disabled=readOnly;grow(input);
@@ -131,7 +144,7 @@ function renderStats(){
   let day=new Date(),streak=0;if(!(library.dailyAdds[today()]||0))day.setDate(day.getDate()-1);
   while(streak<366&&(library.dailyAdds[localKey(day)]||0)>0){streak++;day.setDate(day.getDate()-1)}
   const card=(name,value,caption)=>`<div class="surface"><div class="eyebrow">${name}</div><div class="stat-num">${fmt(value)}</div><div class="muted small">${caption}</div></div>`;
-  main.innerHTML=`<div class="intro"><div class="eyebrow">Dein Fortschritt</div><h1>Wörter, nicht Perfektion.</h1></div><div class="stat-grid">${card('Heute',library.dailyAdds[today()]||0,'neue Wörter')}${card('7 Tage',week,'neue Wörter')}${card('Rohfassungen',total,'Wörter im Entwurf')}${card('Abgeschlossen',completed,'von '+library.chapters.length+' Kapiteln')}</div>
+  main.innerHTML=`<div class="intro"><div class="eyebrow">Dein Fortschritt</div><h1>Wörter, nicht Perfektion.</h1></div><section class="surface" style="margin-bottom:18px"><div class="row"><span class="eyebrow">Gesamtziel</span><span class="push"></span><strong>${(wordTotal()/goal()*100).toFixed(2)} %</strong></div>${progressBar(wordTotal(),goal())}<p class="small muted">${fmt(wordTotal())} von ${fmt(goal())} Wörtern · ${fmt(Math.max(0,goal()-wordTotal()))} verbleibend</p></section><div class="stat-grid">${card('Heute',library.dailyAdds[today()]||0,'neue Wörter')}${card('7 Tage',week,'neue Wörter')}${card('Rohfassungen',total,'Wörter im Entwurf')}${card('Abgeschlossen',completed,'von '+library.chapters.length+' Kapiteln')}</div>
   <section class="surface" style="margin-top:20px"><div class="row"><div class="eyebrow">Letzte 7 Tage</div><span class="push"></span><span class="small" style="color:var(--accent)">${streak} ${streak===1?"Tag":"Tage"} Serie</span></div>
   <div class="bars">${counts.map(c=>`<div class="bar-cell"><small>${c.count||'–'}</small><div class="bar ${!c.count?'empty':''}" style="height:${Math.max(5,Math.round(c.count/peak*95))}px"></div><span>${c.day.toLocaleDateString('de-DE',{weekday:'short'}).replace('.','')}</span></div>`).join('')}</div></section>
   <p class="notice">Gezählt werden neue Wörter beim Drafting. Korrekturen im aktuellen Absatz können die Tageszahl leicht erhöhen. Revisionen zählen nicht.</p>`;
@@ -140,13 +153,14 @@ function renderSettings(){
   const s=library.settings;
   main.innerHTML=`<div class="intro"><div class="eyebrow">Dein Schreibritual</div><h1>Mach jeden Absatz spürbar.</h1></div>
   <section class="surface"><div class="eyebrow" style="margin-bottom:17px">Absatz-Sound</div><label for="sound">Klang</label><select id="sound" ${readOnly?'disabled':''}><option value="plop">Plop</option><option value="thud">Thud</option><option value="off">Aus</option></select><div class="row" style="margin:19px 0"><span>Haptisches Feedback (nur native iOS-App)</span><span class="push"></span><span class="small muted">nur nativ</span></div><button class="button" data-act="test-sound">▶ Klang testen</button></section>
-  <section class="surface" style="margin-top:16px"><div class="eyebrow" style="margin-bottom:15px">So funktioniert die Sperre</div><p>1. Der aktuelle Absatz bleibt editierbar.<br>2. Return sperrt den vorherigen Absatz.<br>3. Kapitelabschluss archiviert den Originaltext und öffnet eine freie Revisionsfassung.</p></section>
+  <section class="surface" style="margin-top:16px"><div class="eyebrow" style="margin-bottom:15px">Schrift & Romanziel</div><label for="font">Leseschrift</label><select id="font"><option value="serif">Serife (Georgia)</option><option value="sans">Sans Serif (System)</option><option value="mono">Monospace</option></select><label for="wordGoal" style="margin-top:16px">Geplante Gesamtwortzahl</label><input id="wordGoal" type="number" min="1" step="1000" style="width:100%;background:var(--raised);border:1px solid var(--rule);color:var(--text);border-radius:10px;padding:13px"><p class="notice">Alle Kapitel zählen zum Gesamtziel, auch unfertige. Revisionen ersetzen die Entwurfswortzahl.</p></section><section class="surface" style="margin-top:16px"><div class="eyebrow" style="margin-bottom:15px">So funktioniert die Sperre</div><p>1. Der aktuelle Absatz bleibt editierbar.<br>2. Return sperrt den vorherigen Absatz.<br>3. Kapitelabschluss archiviert den Originaltext und öffnet eine freie Revisionsfassung.</p></section>
   <section class="surface" style="margin-top:16px"><div class="eyebrow" style="margin-bottom:15px">Datensicherheit</div><p>✓ Lokale Speicherung per IndexedDB<br>✓ Offline nach Installation über HTTPS<br>✓ TXT-, Markdown- und DOCX-Export<br>✓ Bibliothek als JSON sichern und wiederherstellen</p><p class="notice">Browserdaten können durch das Löschen von Websitedaten, private Modi oder Gerätewechsel verloren gehen. Exportiere regelmäßig Sicherungen.</p><div class="row" style="flex-wrap:wrap"><button class="button" data-act="backup">Bibliothek sichern</button><button class="button" data-act="restore" ${readOnly?'disabled':''}>Backup einlesen</button></div></section>
-  <p class="small" style="text-align:center;margin:30px">FORWARD · iOS Web · 1.0</p>`;
-  $('#sound').value=s.sound;
+  <p class="small" style="text-align:center;margin:30px">FORWARD · iOS Web · 1.1</p>`;
+  $('#sound').value=s.sound;$('#font').value=s.font||'serif';$('#wordGoal').value=goal();$('#font').onchange=e=>{s.font=e.target.value;applyFont();save(true)};$('#wordGoal').onchange=e=>{s.wordGoal=Math.max(1,Math.floor(Number(e.target.value)||360000));e.target.value=s.wordGoal;save(true);toast('Wortziel gespeichert')};
   $('#sound').onchange=e=>{s.sound=e.target.value;audio=null;save(true);toast('Klang gespeichert')};
 }
 
+function applyFont(){document.documentElement.dataset.font=library.settings.font||'serif'}
 function showDialog(title,content,buttons){
   $('#dialog-body').innerHTML=`<h2>${esc(title)}</h2>${content}<div class="actions" id="dialog-actions"></div>`;
   for(const b of buttons){
@@ -187,6 +201,7 @@ function promptFinish(){const c=current();if(!c||c.phase!=='drafting')return;
 }
 function promptMenu(){const c=current();if(!c)return;
   showDialog('Kapiteloptionen',`<p class="small">${esc(c.title)}</p>`,[
+    {label:'Schließen',run:closeDialog},
     {label:'Umbenennen',run:()=>{closeDialog();showDialog('Kapitel umbenennen',`<label>Titel</label><input type="text" id="rename" value="${esc(c.title)}" maxlength="180">`,[{label:'Abbrechen',run:closeDialog},{label:'Speichern',primary:true,run:()=>{const name=$('#rename').value.trim();if(name){c.title=name;touch(c);save(true);closeDialog();renderEditor()}}}]);$('#rename').focus()}},
     {label:'Exportieren',run:()=>{closeDialog();promptExport(false)}},
     ...(c.phase==='revising'?[{label:'Original lesen',run:()=>{closeDialog();showOriginal()}}]:[]),
@@ -251,6 +266,9 @@ document.addEventListener('click',e=>{
   if(button.dataset.removemarker){const c=current();c.markers=c.markers.filter(m=>m.id!==button.dataset.removemarker);touch(c);save(true);closeDialog();showMarkers();renderEditor();return}
   switch(button.dataset.act){
     case'create':promptCreate();break;
+    case'bold':formatActive('bold');break;
+    case'italic':formatActive('italic');break;
+    case'underline':formatActive('underline');break;
     case'focus':focus=!focus;app.classList.toggle('focus',focus);renderEditor();break;
     case'marker':promptMarker();break;
     case'markers':showMarkers();break;
