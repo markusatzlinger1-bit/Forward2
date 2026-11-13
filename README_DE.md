@@ -33,3 +33,12 @@ Die App besitzt keine Benutzeranmeldung und sendet Kapiteltext nicht an einen Se
 Die mobile Oberfläche wurde in einem Chromium-Mobilviewport durchgeklickt: Kapitel erstellen, Absatzabschlüsse, Marker, Originalarchiv, Revision, DOCX-Export und Statistik. Die exportierte DOCX wurde danach mit einem separaten Word-Dokumentleser geöffnet und auf den Inhalt geprüft. Ein echter iOS-Safari-Test war in dieser Umgebung nicht möglich; besonders Tonwiedergabe und Homescreen-Installation sollten am Gerät geprüft werden.
 
 **Hinweis:** Diese Web-App und das separate SwiftUI-Xcode-Projekt verwenden unterschiedliche Speicherschemata. Es gibt keine automatische Synchronisierung zwischen ihnen.
+
+## Neu in Version 1.1
+
+- **Fett, kursiv und unterstrichen** im aktuell offenen Absatz über B / I / U. Nach Return wird die sichtbare Formatierung zusammen mit dem Absatz gesperrt.
+- **Schriftwahl:** Serife (Georgia), Sans Serif oder Monospace in Optionen.
+- **Romanwortziel:** Standard 360.000 Wörter, frei anpassbar. Gesamtfortschritt in Prozent und Beitrag jedes Kapitels in der Kapitelübersicht.
+- **Schließen** im Kapiteloptionsdialog.
+
+**Wichtige Einschränkungen:** Der Editor zeigt Formatierungen im Entwurf an und speichert sie in der JSON-Bibliothek. Die bisherige Revision und die TXT/Markdown/DOCX-Exporte verwenden weiterhin den reinen Text und übernehmen die Formatierung noch nicht. Vor einem längeren Projekt sollten Formatierung und iOS-Safari-Textauswahl auf dem eigenen Gerät getestet werden. Bitte vor dem Update über Optionen → Bibliothek sichern ein JSON-Backup anlegen. Beim GitHub-Pages-Update alle Dateien ersetzen und die Seite neu laden; bei älteren iOS-Installationen kann ein Neustart der Home-Bildschirm-App nötig sein.
