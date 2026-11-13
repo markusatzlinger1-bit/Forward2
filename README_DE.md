@@ -17,3 +17,10 @@
 Die Wortziel-Anzeige zählt aktuelle Wörter der vorhandenen Kapitel, nicht die historisch geschriebenen Wörter. Tagesstatistiken bleiben bewusst unverändert, wenn ein Kapitel gelöscht wird. Die gespeicherte Revisionsfassung wird beim Zurücksetzen auf Draft nicht automatisch in die gesperrten Absätze übernommen.
 
 Diese Web-App wurde auf JavaScript-Syntax geprüft, aber nicht auf einem echten iPhone getestet.
+
+
+## Version 1.3
+- „Entwurf abschließen“ befindet sich unter **••• → Kapiteloptionen** und nicht mehr in der Formatierungsleiste.
+- Die Formatierungsleiste scrollt auf schmalen Displays horizontal, ohne dass Buttons zusammengedrückt werden.
+- Lesebereich, Textgröße und Seitenränder wurden für iPhones optimiert.
+- Vor dem Update bitte die JSON-Bibliothek sichern. Die App-Daten bleiben bei identischer GitHub-Pages-Adresse normalerweise erhalten.

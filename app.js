@@ -100,7 +100,7 @@ function renderEditor({focusEditor=false,cursor=null}={}){
     input.addEventListener('paste',e=>{e.preventDefault();const text=(e.clipboardData||window.clipboardData).getData('text/plain').replace(/[\r\n]+/g,' ');document.execCommand('insertText',false,text);syncActive()});
     input.addEventListener('input',()=>syncActive());
     input.addEventListener('blur',()=>{if(saveTimer){save(true)}});
-    $('#editor-actions').innerHTML=`<button class="button" data-act="bold" aria-label="Fett"><b>B</b></button><button class="button" data-act="italic" aria-label="Kursiv"><i>I</i></button><button class="button" data-act="underline" aria-label="Unterstreichen"><u>U</u></button><button class="button" data-act="emdash" aria-label="Gedankenstrich einfügen">—</button><button class="button" data-act="separator" aria-label="Szenentrenner einfügen">---</button><button class="button" data-act="marker" ${readOnly?'disabled':''}>♧ Marker</button><button class="iconbtn muted" data-act="markers">${c.markers.length?'('+c.markers.length+')':'Liste'}</button><span class="push"></span><button class="button primary" data-act="finish" ${readOnly?'disabled':''}>✓ Abschließen</button>`;
+    $('#editor-actions').innerHTML=`<button class="button" data-act="bold" aria-label="Fett"><b>B</b></button><button class="button" data-act="italic" aria-label="Kursiv"><i>I</i></button><button class="button" data-act="underline" aria-label="Unterstreichen"><u>U</u></button><button class="button" data-act="emdash" aria-label="Gedankenstrich einfügen">—</button><button class="button" data-act="separator" aria-label="Szenentrenner einfügen">---</button><button class="button" data-act="marker" ${readOnly?'disabled':''}>♧ Marker</button><button class="iconbtn muted" data-act="markers">${c.markers.length?'('+c.markers.length+')':'Liste'}</button>`;
     if(focusEditor){input.focus();input.scrollIntoView({block:'nearest'})}
   }else{
     $('#paper').innerHTML='<div class="eyebrow" style="margin-bottom:26px">Freie Überarbeitung · Original bleibt erhalten</div><textarea id="revision" aria-label="Bearbeitbare Revision" spellcheck="true"></textarea>';
@@ -216,6 +216,7 @@ function promptMenu(){const c=current();if(!c)return;
     {label:'Schließen',run:closeDialog},
     {label:'Umbenennen',run:()=>{closeDialog();showDialog('Kapitel umbenennen',`<label>Titel</label><input type="text" id="rename" value="${esc(c.title)}" maxlength="180">`,[{label:'Abbrechen',run:closeDialog},{label:'Speichern',primary:true,run:()=>{const name=$('#rename').value.trim();if(name){c.title=name;touch(c);save(true);closeDialog();renderEditor()}}}]);$('#rename').focus()}},
     {label:'Exportieren',run:()=>{closeDialog();promptExport(false)}},
+    ...(c.phase==='drafting'?[{label:'✓ Entwurf abschließen',primary:true,run:()=>{closeDialog();promptFinish()}}]:[]),
     ...(c.phase==='revising'?[{label:'Zurück zu Draft',run:()=>{closeDialog();promptReturnToDraft()}},{label:'Original lesen',run:()=>{closeDialog();showOriginal()}}]:[]),
     {label:'Löschen',danger:true,run:()=>{closeDialog();promptDelete()}}
   ]);
