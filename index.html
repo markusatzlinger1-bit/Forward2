@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c131a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Forward">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="icon" href="icon-192.png">
+  <title>Forward · Draft without looking back</title>
+  <style>
+    :root{--bg:#0c131a;--surface:#17232b;--raised:#203038;--rule:#354249;--text:#edf0ee;--muted:#94a3a7;--accent:#b0e6c1;--danger:#e5a5a5;color-scheme:dark}
+    *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Helvetica Neue',sans-serif;height:100%;min-height:100%;}
+    button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+    #app{min-height:100dvh;display:flex;flex-direction:column;max-width:840px;margin:auto}
+    .top{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;min-height:65px;padding:12px 21px;padding-top:max(12px,env(safe-area-inset-top));background:rgba(12,19,26,.97);border-bottom:1px solid var(--rule)}
+    .top strong{font-size:17px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.push{flex:1}
+    .iconbtn{appearance:none;border:1px solid transparent;background:transparent;color:var(--accent);padding:9px 10px;border-radius:10px;font-size:16px}
+    .iconbtn:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+    .top .iconbtn{flex-shrink:0}.surface{border:1px solid var(--rule);background:var(--surface);border-radius:18px;padding:19px}
+    main{flex:1;padding:30px 22px 32px}.intro{margin:0 0 28px}.eyebrow{font-size:10px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+    h1{font-family:Georgia,serif;font-size:35px;font-weight:500;line-height:1.2;letter-spacing:-.5px;margin:12px 0}h2{font-size:19px;font-weight:600;margin:0}p{line-height:1.5;color:var(--muted)}
+    .cards{display:grid;gap:12px}.chapter{display:block;text-align:left;width:100%;color:inherit}.chapter h2{font:500 22px Georgia,serif;margin:13px 0}.row{display:flex;align-items:center;gap:10px}.muted{color:var(--muted)}.small{font-size:12px}.tiny{font-size:10px}
+    .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}.dot.grey{background:var(--muted)}
+    .button{border:1px solid var(--rule);background:var(--raised);color:var(--text);padding:12px 15px;border-radius:11px;font-size:14px;font-weight:600}
+    .button.primary{background:var(--accent);color:var(--bg);border-color:var(--accent)}.button.danger{background:transparent;color:var(--danger);border-color:var(--danger)}
+    .button.full{width:100%}.footer{position:sticky;bottom:0;display:flex;gap:4px;justify-content:space-around;padding:9px 12px;padding-bottom:max(9px,env(safe-area-inset-bottom));border-top:1px solid var(--rule);background:rgba(23,35,43,.98)}
+    .footer button{flex:1;border:none;background:transparent;color:var(--muted);padding:11px;font-size:13px}.footer button.selected{color:var(--accent)}
+    #editor{display:none;flex:1;flex-direction:column;min-height:calc(100dvh - 75px)}
+    .status{display:flex;align-items:center;gap:8px;padding:13px 22px;color:var(--muted);font:11px ui-monospace,SFMono-Regular,monospace;border-bottom:1px solid var(--rule)}
+    .paper{padding:32px 24px 100px;max-width:780px;width:100%;margin:auto;flex:1}
+    .locked{font:19px/1.68 Georgia,'Times New Roman',serif;white-space:pre-wrap;color:rgba(237,240,238,.70);overflow-wrap:anywhere;margin:0 0 19px}
+    #activePara,#revision{display:block;width:100%;resize:none;outline:0;color:var(--text);font:19px/1.68 Georgia,'Times New Roman',serif;letter-spacing:.01em;border:none;background:transparent;min-height:185px;overflow:hidden;padding:0;margin:0;overflow-wrap:anywhere}
+    #activePara::placeholder{color:#617479}#revision{min-height:60dvh;overflow:auto}
+    #editor-actions{position:sticky;bottom:0;display:flex;align-items:center;gap:9px;padding:12px 16px;padding-bottom:max(12px,env(safe-area-inset-bottom));background:var(--surface);border-top:1px solid var(--rule)}
+    .stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.stat-num{font-size:29px;font-weight:700;letter-spacing:-1px;margin:9px 0 4px;overflow-wrap:anywhere}
+    .bars{display:flex;align-items:flex-end;gap:9px;height:145px;padding:12px 0 0}.bar-cell{flex:1;text-align:center;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;height:100%;font-size:10px;color:var(--muted)}.bar{background:var(--accent);border-radius:5px 5px 2px 2px;min-height:5px}.bar.empty{background:var(--raised)}
+    label{display:block;font-size:13px;margin:0 0 10px;color:var(--muted)}input[type=text],textarea.notes,select{display:block;width:100%;background:var(--raised);border:1px solid var(--rule);color:var(--text);border-radius:10px;padding:13px;outline:none}input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+    dialog{background:var(--surface);color:var(--text);border:1px solid var(--rule);border-radius:18px;width:min(440px,calc(100vw - 36px));max-height:85dvh;overflow:auto;padding:23px}dialog::backdrop{background:#000b;backdrop-filter:blur(4px)}dialog h2{font:500 25px Georgia,serif;margin:0 0 17px}dialog .actions{display:flex;justify-content:flex-end;flex-wrap:wrap;gap:8px;margin-top:20px}dialog pre{white-space:pre-wrap;overflow-wrap:anywhere;font:16px/1.65 Georgia,serif;max-height:54dvh;overflow:auto}
+    .notice{font-size:12px;line-height:1.5;color:var(--muted)}.sep{height:1px;background:var(--rule);margin:17px 0}.fade{opacity:.75}.focus .top{border-bottom:1px solid var(--rule)}.focus .status,.focus #editor-actions{display:none!important}
+    #toast{position:fixed;left:50%;bottom:75px;transform:translateX(-50%);background:var(--accent);color:var(--bg);padding:12px 19px;border-radius:12px;z-index:100;font-size:13px;box-shadow:0 6px 40px #0006;display:none;max-width:90vw;text-align:center}
+    @media(min-width:700px){main{padding:45px 36px}.paper{padding:45px 40px 100px}.cards{grid-template-columns:repeat(2,minmax(0,1fr))}}
+  </style>
+</head>
+<body>
+<div id="app">
+  <header class="top" id="top"></header>
+  <main id="main"></main>
+  <section id="editor"><div class="status" id="status"></div><div class="paper" id="paper"></div><div id="editor-actions"></div></section>
+  <nav class="footer" id="footer"></nav>
+</div>
+<dialog id="dialog"><div id="dialog-body"></div></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<script src="app.js" defer></script>
+</body>
+</html>
